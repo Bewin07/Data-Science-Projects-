@@ -14,6 +14,15 @@ if uploaded:
 
     df = pd.read_excel(uploaded)
     
+    # Pre-process: Drop known metadata rows (e.g. "(In Lakhs)" unit row)
+    # This row has mixed types (string in numeric cols) which crashes Streamlit's Arrow conversion
+    if not df.empty:
+        # Check text columns for the specific artifact mentioned in the error
+        mask = df.apply(lambda x: x.astype(str).str.contains(r"\(In Lakhs\)", regex=False)).any(axis=1)
+        if mask.any():
+            df = df[~mask]
+            st.warning("⚠️ Removed metadata row(s) containing '(In Lakhs)'.")
+    
     # Normalize column name if typo exists (handle both spellings)
     if "Oustanding Amount" in df.columns and "Outstanding Amount" not in df.columns:
         df.rename(columns={"Oustanding Amount": "Outstanding Amount"}, inplace=True)
