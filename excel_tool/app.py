@@ -17,11 +17,28 @@ if uploaded:
     # Pre-process: Drop known metadata rows (e.g. "(In Lakhs)" unit row)
     # This row has mixed types (string in numeric cols) which crashes Streamlit's Arrow conversion
     if not df.empty:
-        # Check text columns for the specific artifact mentioned in the error
-        mask = df.apply(lambda x: x.astype(str).str.contains(r"\(In Lakhs\)", regex=False)).any(axis=1)
+        # Check all columns for the specific artifact mentioned in the error.
+        # Use case=False for case insensitivity and regex=False to treat () as literals (but we can't mix both easily in standard pandas without regex=True and escaping).
+        # Simplest consistent way: convert to string, lower case, check for "in lakhs".
+        
+        # 1. Drop rows where any column contains "(In Lakhs)" (case insensitive)
+        def is_metadata_row(row):
+            return row.astype(str).str.lower().str.contains("in lakhs").any()
+        
+        mask = df.apply(is_metadata_row, axis=1)
         if mask.any():
             df = df[~mask]
             st.warning("⚠️ Removed metadata row(s) containing '(In Lakhs)'.")
+            
+        # 2. Also drop rows where 'CustomerCode' or 'Outstanding Amount' is NaN (often footer/header noise)
+        # But be careful not to drop valid data if only one is missing. 
+        # For 'B2B2C', ensure it is numeric if it exists. 
+        # The error specifically mentioned 'B2B2C' column having 'str' instead of 'int64'.
+        if 'B2B2C' in df.columns:
+             # Force invalid non-numeric values in B2B2C to NaN, then drop those rows if they look like garbage
+             df['B2B2C'] = pd.to_numeric(df['B2B2C'], errors='coerce')
+             # If B2B2C became NaN but was a string before, we might want to check if the whole row is garbage.
+             # For now, just ensuring it's numeric prevents the Arrow error.
     
     # Normalize column name if typo exists (handle both spellings)
     if "Oustanding Amount" in df.columns and "Outstanding Amount" not in df.columns:

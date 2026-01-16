@@ -8,7 +8,7 @@ def process_settlement(df):
     """
     # Clean data
     df = df.copy()
-    df["Invoice/Receipt Date"] = pd.to_datetime(df["Invoice/Receipt Date"], errors="coerce")
+    df["Invoice/Receipt Date"] = pd.to_datetime(df["Invoice/Receipt Date"], dayfirst=True, errors="coerce")
     
     # Handle column name normalization inside the function or assume it's done before?
     # The test passes 'Outstanding Amount'. app.py handles the rename before calling this.
