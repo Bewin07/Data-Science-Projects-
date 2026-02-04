@@ -16,8 +16,12 @@ def process_settlement(df):
     if "Oustanding Amount" in df.columns and "Outstanding Amount" not in df.columns:
         df.rename(columns={"Oustanding Amount": "Outstanding Amount"}, inplace=True)
         
-    # Fill missing CustomerCode to prevent groupby dropping them
-    df["CustomerCode"] = df["CustomerCode"].fillna("Unassigned")
+    # Convert CustomerCode to string to handle mixed types
+    df["CustomerCode"] = df["CustomerCode"].astype(str)
+    
+    # Fill missing CustomerCode (NaN becomes 'nan' string after astype(str))
+    # Replace 'nan' string with "Unassigned", but keep 'NA' as valid customer code
+    df["CustomerCode"] = df["CustomerCode"].replace('nan', 'Unassigned')
 
     # Fill missing Outstanding Amount with 0 for calculation purposes (helper column only)
     # This ensures they are treated as valid numbers (likely debits if 0) and not dropped

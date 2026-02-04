@@ -25,6 +25,9 @@ def chunk_dataframe_by_customer(df: pd.DataFrame, target_chunk_size: int = 10000
     if len(df) <= target_chunk_size:
         return [df]
     
+    # Ensure CustomerCode is string type for consistent grouping
+    df['CustomerCode'] = df['CustomerCode'].astype(str)
+    
     # Group by customer and get sizes
     customer_groups = df.groupby('CustomerCode', sort=False)
     customer_sizes = customer_groups.size()
