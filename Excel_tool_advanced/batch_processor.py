@@ -196,7 +196,7 @@ def process_batches_sequential(
 
 def get_batch_stats(df: pd.DataFrame, batch_size: int = 10000) -> dict:
     """
-    Get statistics about how the data would be batched.
+    Get statistics about how the data would be batched (optimized - no chunk creation).
     
     Args:
         df: Input DataFrame
@@ -205,19 +205,39 @@ def get_batch_stats(df: pd.DataFrame, batch_size: int = 10000) -> dict:
     Returns:
         Dictionary with batch statistics
     """
-    chunks = chunk_dataframe_by_customer(df, batch_size)
+    total_rows = len(df)
     
-    chunk_sizes = [len(chunk) for chunk in chunks]
-    customer_counts = [chunk['CustomerCode'].nunique() for chunk in chunks]
+    # Quick check for small files
+    if total_rows <= batch_size:
+        return {
+            'total_rows': total_rows,
+            'total_customers': df['CustomerCode'].nunique() if 'CustomerCode' in df.columns else 0,
+            'num_batches': 1,
+            'avg_batch_size': total_rows,
+            'min_batch_size': total_rows,
+            'max_batch_size': total_rows,
+            'avg_customers_per_batch': df['CustomerCode'].nunique() if 'CustomerCode' in df.columns else 0,
+            'batch_sizes': [total_rows],
+            'customer_counts': [df['CustomerCode'].nunique() if 'CustomerCode' in df.columns else 0]
+        }
+    
+    # For large files, estimate batch count without creating chunks
+    # This is much faster than actually chunking
+    customer_counts = df.groupby('CustomerCode', sort=False).size()
+    total_customers = len(customer_counts)
+    
+    # Estimate number of batches (rough approximation)
+    estimated_batches = max(1, total_rows // batch_size)
     
     return {
-        'total_rows': len(df),
-        'total_customers': df['CustomerCode'].nunique(),
-        'num_batches': len(chunks),
-        'avg_batch_size': np.mean(chunk_sizes) if chunk_sizes else 0,
-        'min_batch_size': min(chunk_sizes) if chunk_sizes else 0,
-        'max_batch_size': max(chunk_sizes) if chunk_sizes else 0,
-        'avg_customers_per_batch': np.mean(customer_counts) if customer_counts else 0,
-        'batch_sizes': chunk_sizes,
-        'customer_counts': customer_counts
+        'total_rows': total_rows,
+        'total_customers': total_customers,
+        'num_batches': estimated_batches,
+        'avg_batch_size': total_rows / estimated_batches,
+        'min_batch_size': 0,  # Estimated
+        'max_batch_size': 0,  # Estimated
+        'avg_customers_per_batch': total_customers / estimated_batches,
+        'batch_sizes': [],  # Not computed for speed
+        'customer_counts': []  # Not computed for speed
     }
+
