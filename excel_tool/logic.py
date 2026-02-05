@@ -17,7 +17,8 @@ def process_settlement(df):
         df.rename(columns={"Oustanding Amount": "Outstanding Amount"}, inplace=True)
         
     # Fill missing CustomerCode to prevent groupby dropping them
-    df["CustomerCode"] = df["CustomerCode"].fillna("Unassigned")
+    # Explicitly convert to string to prevent PyArrow serialization errors
+    df["CustomerCode"] = df["CustomerCode"].fillna("Unassigned").astype(str)
 
     # Fill missing Outstanding Amount with 0 for calculation purposes (helper column only)
     # This ensures they are treated as valid numbers (likely debits if 0) and not dropped
