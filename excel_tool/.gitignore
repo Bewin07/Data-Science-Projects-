@@ -1,0 +1,4 @@
+__pycache__/
+exvenv/
+*.pyc
+.DS_Store
